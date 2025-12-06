@@ -349,7 +349,7 @@ def obtenir_ou_creer_dossier_finance(models, db, uid, password):
             [{
                 'name': 'Finance',
                 'type': 'folder',
-                'folder_id': False,  # Dossier racine
+                'folder_id': False,  # Dossier racine (False est correct pour Odoo)
                 'owner_id': uid,  # REQUIRED: propriétaire du dossier
             }]
         )
@@ -623,18 +623,24 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
         # Filtrer les factures déjà traitées
         factures_a_traiter = [f for f in factures if f['id'] not in factures_deja_traitees]
         
-        # Vérifier dans la base de données
+        # Vérifier dans la base de données (seulement si on a des factures à traiter)
         factures_ids_a_traiter = [f['id'] for f in factures_a_traiter]
-        documents_existants = models.execute_kw(
-            db, uid, password,
-            'documents.document',
-            'search_read',
-            [[
-                ['res_model', '=', 'account.move'],
-                ['res_id', 'in', factures_ids_a_traiter]
-            ]],
-            {'fields': ['res_id']}
-        )
+        documents_existants = []
+        if factures_ids_a_traiter:  # Éviter de passer une liste vide
+            try:
+                documents_existants = models.execute_kw(
+                    db, uid, password,
+                    'documents.document',
+                    'search_read',
+                    [[
+                        ['res_model', '=', 'account.move'],
+                        ['res_id', 'in', factures_ids_a_traiter]
+                    ]],
+                    {'fields': ['res_id']}
+                )
+            except Exception as e:
+                log_detail(f"⚠️  Erreur lors de la vérification des documents existants: {str(e)}")
+                documents_existants = []
         
         factures_avec_document = set()
         if documents_existants:

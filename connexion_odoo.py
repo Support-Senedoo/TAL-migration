@@ -59,13 +59,15 @@ def connecter_odoo():
         ssl_context.check_hostname = False
         ssl_context.verify_mode = ssl.CERT_NONE
         
-        # Création du transport sécurisé
+        # Création du transport sécurisé avec allow_none activé
         transport = xmlrpc.client.SafeTransport(context=ssl_context)
+        transport.allow_none = True  # Permet de passer None dans XML-RPC
         
         # Connexion au serveur commun pour l'authentification
         common = xmlrpc.client.ServerProxy(
             f"{ODOO_CONFIG['URL']}/xmlrpc/2/common", 
-            transport=transport
+            transport=transport,
+            allow_none=True  # Permet de passer None dans XML-RPC
         )
         
         # Authentification
@@ -84,7 +86,8 @@ def connecter_odoo():
             # Connexion au serveur d'objets pour les opérations
             models = xmlrpc.client.ServerProxy(
                 f"{ODOO_CONFIG['URL']}/xmlrpc/2/object", 
-                transport=transport
+                transport=transport,
+                allow_none=True  # Permet de passer None dans XML-RPC
             )
             
             # Récupération des informations utilisateur
