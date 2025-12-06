@@ -1,19 +1,15 @@
 #!/bin/bash
-# Script simple pour relancer le transfert
-
-echo "🔄 RELANCE DU TRANSFERT"
-echo "======================"
-echo ""
+# Relance rapide du transfert
 
 cd "$(dirname "$0")"
 
-# Arrêter le script s'il tourne déjà
-echo "1️⃣  Arrêt du script existant (s'il tourne)..."
-bash ARRETER_SCRIPT.sh > /dev/null 2>&1
+echo "🔄 Relance du transfert..."
+echo ""
+
+# Arrêter le script existant s'il tourne
+pkill -f transferer_factures_documents_v2.py 2>/dev/null
 sleep 2
 
-# Lancer le script de gestion
-echo "2️⃣  Lancement du transfert..."
-echo ""
+# Relancer
 python3.10 gestion_transfert.py
 

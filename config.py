@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-CONFIGURATION POUR TAL-migration - TEMPLATE
-===========================================
+CONFIGURATION POUR TAL-migration
+=================================
 
-Copiez ce fichier vers config.py et modifiez les valeurs ci-dessous.
-Le fichier config.py est dans .gitignore et ne sera pas commité.
+Fichier de configuration centralisé pour le projet TAL-migration.
+Modifiez les valeurs ci-dessous selon votre environnement.
 """
 
 # Configuration Odoo SaaS
 ODOO_CONFIG = {
-    'URL': 'https://votre-instance.odoo.com/',  # URL de votre instance Odoo SaaS
-    'DB': 'votre-base-de-donnees',              # Nom de la base de données
-    'USER': 'votre-email@exemple.com',          # Nom d'utilisateur
-    'PASS': 'votre-mot-de-passe'                 # Mot de passe
+    'URL': 'https://tal-senegal.odoo.com/',  # URL de votre instance Odoo SaaS (PRODUCTION)
+    'DB': 'tal-senegal',                      # Nom de la base de données (PRODUCTION)
+    'USER': 'support@senedoo.com',             # Nom d'utilisateur
+    'PASS': 'senedoo@2025'                      # Mot de passe
 }
 
 # Paramètres par défaut
@@ -26,7 +26,5 @@ DEFAULT_PARAMS = {
 
 # Pour permettre l'importation
 __all__ = ['ODOO_CONFIG', 'DEFAULT_PARAMS']
-
-
 
 

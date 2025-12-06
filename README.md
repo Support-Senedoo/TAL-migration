@@ -2,160 +2,182 @@
 
 Projet de migration TAL - Transfert des factures vers le module Document Odoo
 
-## Description
+## 🎯 Objectif
 
-Ce projet contient les scripts et configurations nécessaires pour transférer toutes les factures clients vers le module Document d'Odoo v19, avec sélection automatique du modèle PDF et stockage local.
+Transférer toutes les factures clients vers le module Document d'Odoo v19, avec sélection automatique du modèle PDF et stockage local.
 
-## Installation
+## 🚀 Installation rapide
 
-```bash
-pip install -r requirements.txt
-```
-
-## Configuration
-
-### Connexion à Odoo
-
-1. Modifiez le fichier `config.py` avec vos identifiants Odoo :
-   - URL de votre instance Odoo SaaS
-   - Nom de la base de données
-   - Nom d'utilisateur
-   - Mot de passe
-
-2. Testez la connexion :
-   ```bash
-   python connexion_odoo.py
-   ```
-
-## Scripts principaux
-
-### Transfert des factures vers le module Document
-
-Le script `transferer_factures_documents_v2.py` transfère **TOUTES** les factures clients vers le module Document d'Odoo.
-
-**Fonctionnalités :**
-- ✅ Traitement de toutes les factures (pas de limite)
-- ✅ Sélection automatique du modèle PDF selon les lignes de facture
-  - "Export de Conteneur" → Export EOLIS
-  - "Livraison" → Factures Livraisons
-  - "Transfert" → Factures Transferts
-- ✅ Stockage local des PDFs dans `Factures_pdf_TAL/`
-- ✅ Structure correcte : Finance/Factures clients/[Client]
-- ✅ Système de suivi de progression automatique
-- ✅ Reprise en cas d'interruption
-- ✅ Vérification dans la base de données pour éviter les doublons
-- ✅ Sauvegarde automatique après chaque facture transférée
-- ✅ Optimisations de performance (session HTTP réutilisable)
-
-**Utilisation :**
-```bash
-# Test sur 100 factures
-python transferer_factures_documents_v2.py
-
-# Transfert complet de toutes les factures
-python transferer_factures_documents_v2.py --all
-```
-
-**Système de progression :**
-- Le script sauvegarde automatiquement la progression dans `progression_transfert.json`
-- Chaque facture transférée est enregistrée immédiatement
-- Le script peut être relancé à tout moment : il reprendra automatiquement là où il s'est arrêté
-- Les factures déjà transférées ne seront pas retraitées
-
-**Gestion de la progression :**
-```bash
-# Afficher l'état de la progression
-python gestion_progression.py afficher
-
-# Réinitialiser la progression (pour tout recommencer)
-python gestion_progression.py reinitialiser
-
-# Nettoyer la progression (garde les 1000 dernières factures)
-python gestion_progression.py nettoyer
-```
-
-## 🚀 Déploiement sur PythonAnywhere
-
-Pour exécuter les scripts depuis PythonAnywhere, consultez le guide complet :
-**[DEPLOIEMENT_PYTHONANYWHERE.md](DEPLOIEMENT_PYTHONANYWHERE.md)**
-
-### Installation rapide sur PythonAnywhere
+### Sur PythonAnywhere
 
 ```bash
-# 1. Cloner le dépôt
+# 1. Cloner le projet
 cd ~
-git clone https://github.com/VOTRE_USERNAME/TAL-migration.git
+git clone https://github.com/Support-Senedoo/TAL-migration.git
 cd TAL-migration
 
 # 2. Installer les dépendances
 pip3.10 install --user -r requirements.txt
 
-# 3. Configurer
-# Modifiez config.py avec vos identifiants Odoo
+# 3. Configurer config.py
+cp config.py.template config.py
+# Éditer config.py avec vos identifiants Odoo
 
-# 4. Tester
+# 4. Tester la connexion
 python3.10 connexion_odoo.py
-python3.10 transferer_factures_documents_v2.py
+
+# 5. Lancer le transfert
+bash START.sh
 ```
 
-## 📤 Synchronisation avec GitHub
+### Localement (Windows)
 
-### Sur votre machine locale
+```bash
+# 1. Installer les dépendances
+pip install -r requirements.txt
 
-1. **Double-cliquez sur** `COMMIT_ET_PUSH.bat`
-   - Ou en ligne de commande :
-     ```bash
-     git add -A
-     git commit -F COMMIT_MESSAGE.txt
-     git push origin main
-     ```
+# 2. Configurer config.py
+# Copier config.py.template vers config.py et modifier avec vos identifiants
 
-2. **Mettre à jour depuis GitHub** (sur PythonAnywhere)
-   ```bash
-   cd ~/TAL-migration
-   git pull origin main
-   ```
+# 3. Tester la connexion
+python connexion_odoo.py
 
-## 📚 Documentation
-
-| Document | Description |
-|----------|-------------|
-| `README.md` | Documentation principale |
-| `DEPLOIEMENT_PYTHONANYWHERE.md` | Guide complet de déploiement |
-| `DEMARRAGE_RAPIDE.md` | Guide de démarrage rapide |
-| `SYNCHRONISATION_GITHUB.md` | Guide de synchronisation GitHub |
-
-## Structure du projet
-
-```
-TAL-migration/
-├── README.md
-├── DEPLOIEMENT_PYTHONANYWHERE.md    # Guide déploiement
-├── DEMARRAGE_RAPIDE.md              # Démarrage rapide
-├── SYNCHRONISATION_GITHUB.md       # Guide GitHub
-├── requirements.txt
-├── config.py.template               # Template de configuration
-├── config.py                        # Configuration (non commité)
-├── connexion_odoo.py                # Connexion à Odoo
-├── transferer_factures_documents_v2.py  # Script principal optimisé
-├── gestion_progression.py           # Gestion de la progression
-├── supprimer_dossiers_clients.py    # Nettoyage dossiers
-├── diagnostic_dossiers.py           # Diagnostic structure
-├── COMMIT_ET_PUSH.bat               # Sauvegarde GitHub (Windows)
-├── COMMIT_MESSAGE.txt               # Message de commit
-├── update_from_github.sh            # Mise à jour (Linux/PythonAnywhere)
-├── INSTALL_PYTHONANYWHERE.sh        # Installation complète
-├── Factures_pdf_TAL/                # PDFs sauvegardés localement (non commité)
-├── progression_transfert.json       # Progression (généré, non commité)
-└── src/
-    └── __init__.py
+# 4. Lancer le transfert
+python gestion_transfert.py
 ```
 
-## 🔒 Fichiers non commités (sécurité)
+## 📋 Configuration
 
-Les fichiers suivants sont dans `.gitignore` et ne seront PAS synchronisés :
-- `config.py` (contient les mots de passe)
-- `progression_transfert.json` (données locales)
-- `Factures_pdf_TAL/` (PDFs locaux)
-- `*.pdf` (fichiers PDF)
+Éditer `config.py` avec vos identifiants Odoo :
+- `URL` : URL de votre instance Odoo SaaS
+- `DB` : Nom de la base de données
+- `USER` : Nom d'utilisateur
+- `PASS` : Mot de passe
 
+## 🔧 Scripts principaux
+
+### Scripts Python
+
+- **`transferer_factures_documents_v2.py`** : Script principal de transfert
+- **`gestion_transfert.py`** : Gestion automatique (vérification, relance, monitoring)
+- **`connexion_odoo.py`** : Connexion à Odoo
+- **`gestion_progression.py`** : Gestion de la progression (afficher, réinitialiser)
+- **`afficher_progression.py`** : Affichage de la progression en temps réel
+- **`analyser_arret.py`** : Analyse les logs pour comprendre pourquoi le script s'arrête
+
+### Scripts shell (Linux/PythonAnywhere)
+
+- **`START.sh`** : Lance le transfert avec gestion automatique
+- **`RELANCE_SIMPLE.sh`** : Relance rapide du transfert
+- **`ARRETER_SCRIPT.sh`** : Arrête le script en cours
+- **`update_from_github.sh`** : Met à jour depuis GitHub
+
+### Scripts batch (Windows)
+
+- **`START.bat`** : Lance le transfert sous Windows
+- **`COMMIT_ET_PUSH.bat`** : Commit et push Git
+- **`PUSH_VERS_GITHUB.bat`** : Push vers GitHub avec authentification
+
+## 📖 Utilisation
+
+### Lancer le transfert complet
+
+```bash
+# Sur PythonAnywhere
+bash START.sh
+
+# Ou avec relance automatique
+python3.10 gestion_transfert.py --watchdog
+```
+
+### Voir la progression
+
+```bash
+# En temps réel
+python3.10 afficher_progression.py
+
+# Ou directement
+tail -f transfert_detaille_*.log
+```
+
+### Arrêter le script
+
+```bash
+bash ARRETER_SCRIPT.sh
+```
+
+### Gérer la progression
+
+```bash
+# Afficher la progression
+python3.10 gestion_progression.py afficher
+
+# Réinitialiser la progression
+python3.10 gestion_progression.py reinitialiser
+```
+
+## 🔍 Commandes utiles
+
+### Vérifier l'état du script
+
+```bash
+python3.10 gestion_transfert.py --status
+```
+
+### Mettre à jour depuis GitHub
+
+```bash
+bash update_from_github.sh
+```
+
+### Analyser un arrêt
+
+```bash
+python3.10 analyser_arret.py
+```
+
+## 📁 Structure des dossiers
+
+- `Finance/Factures clients/[Nom du client]/` : Dossiers clients dans Odoo Documents
+- `Factures_pdf_TAL/` : PDFs stockés localement
+- `progression_transfert.json` : État de la progression (ne pas modifier)
+- `transfert_detaille_*.log` : Logs détaillés du transfert
+
+## 🔐 Sélection automatique des modèles PDF
+
+Le script sélectionne automatiquement le bon modèle PDF selon le contenu de la facture :
+- **"Export EOLIS"** : Si la facture contient "Export de Conteneur"
+- **"Factures Livraisons"** : Si la facture contient "Livraison"
+- **"Factures Transferts"** : Si la facture contient "Transfert" (défaut)
+
+## ⚠️ Notes importantes
+
+- Le script reprend automatiquement là où il s'est arrêté grâce à `progression_transfert.json`
+- Les PDFs sont stockés localement dans `Factures_pdf_TAL/`
+- Les logs détaillés sont dans `transfert_detaille_*.log`
+- Ne pas modifier `progression_transfert.json` manuellement
+
+## 🐛 Dépannage
+
+### Le script s'arrête
+
+```bash
+python3.10 analyser_arret.py
+```
+
+### Vérifier la connexion Odoo
+
+```bash
+python3.10 connexion_odoo.py
+```
+
+### Réinitialiser et recommencer
+
+```bash
+python3.10 gestion_progression.py reinitialiser
+bash START.sh
+```
+
+## 📞 Support
+
+Pour toute question, vérifier les logs dans `transfert_detaille_*.log` ou exécuter `python3.10 analyser_arret.py`.

@@ -34,3 +34,5 @@ echo "   Pour relancer: bash LANCER_TRANSFERT_COMPLET.sh"
 echo "   Ou manuellement: python3.10 transferer_factures_documents_v2.py"
 echo ""
 
+
+

@@ -38,3 +38,5 @@ echo "   Voir la progression: python3.10 gestion_progression.py afficher"
 echo "   Arrêter: bash ARRETER_SCRIPT.sh"
 echo ""
 
+
+
