@@ -32,6 +32,37 @@ DOSSIER_PDF_LOCAL.mkdir(exist_ok=True)
 # Cache des modèles de rapport pour éviter les recherches répétées
 CACHE_MODELES = {}
 
+# Fichier de log détaillé
+FICHIER_LOG_DETAILLE = None
+
+
+def log_detail(message, timestamp=True):
+    """
+    Log un message détaillé dans le fichier log et à l'écran.
+    
+    Args:
+        message: Message à logger
+        timestamp: Si True, ajouter un timestamp
+    """
+    global FICHIER_LOG_DETAILLE
+    
+    if timestamp:
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        message_complet = f"[{now}] {message}"
+    else:
+        message_complet = message
+    
+    # Afficher à l'écran
+    print(message_complet)
+    
+    # Écrire dans le fichier log si défini
+    if FICHIER_LOG_DETAILLE:
+        try:
+            with open(FICHIER_LOG_DETAILLE, 'a', encoding='utf-8') as f:
+                f.write(message_complet + '\n')
+        except:
+            pass
+
 
 def identifier_modele_pdf(models, db, uid, password, facture_id):
     """
@@ -503,7 +534,18 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
         reprendre: Si True, reprendre depuis la progression
         test_mode: Si True, mode test avec statistiques de temps
     """
+    global FICHIER_LOG_DETAILLE
+    
     debut_total = time.time()
+    
+    # Créer un fichier log détaillé avec timestamp
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    FICHIER_LOG_DETAILLE = Path(__file__).parent / f'transfert_detaille_{timestamp}.log'
+    
+    log_detail("=" * 80, timestamp=False)
+    log_detail("DÉMARRAGE DU TRANSFERT DES FACTURES", timestamp=False)
+    log_detail(f"Fichier log: {FICHIER_LOG_DETAILLE.name}", timestamp=False)
+    log_detail("=" * 80, timestamp=False)
     
     # Connexion à Odoo
     uid, models, db, password = connecter_odoo()
@@ -648,10 +690,11 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
             partner_id = partner_info[0] if partner_info else None
             partner_name = partner_info[1] if len(partner_info) > 1 else 'Client inconnu'
             
-            if not test_mode or i <= 10:
-                print(f"\n[{i}/{len(factures_a_traiter_final)}] Facture {facture_numero} - Client: {partner_name}")
+            # Logger chaque facture
+            log_detail(f"[{i}/{len(factures_a_traiter_final)}] Traitement facture {facture_numero} (ID: {facture_id}) - Client: {partner_name}")
             
             if not partner_id:
+                log_detail(f"   ❌ ERREUR: Pas de client associé à la facture {facture_numero}")
                 stats['erreurs'] += 1
                 continue
             
@@ -663,7 +706,9 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
                 if dossier_id:
                     dossiers_clients[partner_id] = dossier_id
                     stats['dossiers_crees'] += 1
+                    log_detail(f"   📁 Dossier créé pour client: {partner_name} (ID dossier: {dossier_id})")
                 else:
+                    log_detail(f"   ❌ ERREUR: Impossible de créer le dossier pour {partner_name}")
                     stats['erreurs'] += 1
                     continue
             else:
@@ -683,6 +728,7 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
             
             if documents_existants:
                 stats['documents_deja_existants'] += 1
+                log_detail(f"   ℹ️  Document déjà existant pour facture {facture_numero}, ignoré")
                 progression['factures_traitees'].append(facture_id)
                 progression['derniere_facture_id'] = max(
                     progression.get('derniere_facture_id', 0),
@@ -704,7 +750,8 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
                 else:
                     report_name = 'account.report_invoice'
             
-            if not test_mode or i <= 10:
+            # Logger le modèle PDF utilisé
+            try:
                 modele_info = models.execute_kw(
                     db, uid, password,
                     'ir.actions.report',
@@ -713,12 +760,16 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
                     {'fields': ['name']}
                 ) if report_id else None
                 modele_nom = modele_info[0]['name'] if modele_info else 'Par défaut'
-                print(f"   📄 Modèle PDF utilisé: {modele_nom}")
+            except:
+                modele_nom = report_name if report_name else 'Par défaut'
+            log_detail(f"   📄 Modèle PDF utilisé: {modele_nom}")
             
             # Générer le PDF
+            log_detail(f"   🔄 Génération PDF pour facture {facture_numero}...")
             contenu_pdf = generer_pdf_facture_http(facture_id, report_name, models, db, password)
             
             if not contenu_pdf:
+                log_detail(f"   ⚠️  ERREUR: Impossible de générer le PDF pour {facture_numero}")
                 stats['sans_pdf'] += 1
                 continue
             
@@ -726,8 +777,12 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
             chemin_local = sauvegarder_pdf_local(facture_numero, contenu_pdf)
             if chemin_local:
                 stats['pdfs_locaux'] += 1
+                log_detail(f"   💾 PDF sauvegardé localement: {chemin_local.name}")
+            else:
+                log_detail(f"   ⚠️  ATTENTION: PDF non sauvegardé localement pour {facture_numero}")
             
             # Créer le document dans Odoo
+            log_detail(f"   📎 Création document dans Odoo pour facture {facture_numero}...")
             pdf_base64 = base64.b64encode(contenu_pdf).decode('utf-8')
             try:
                 document_id = models.execute_kw(
@@ -745,6 +800,7 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
                     }]
                 )
                 stats['documents_crees'] += 1
+                log_detail(f"   ✅ Document créé avec succès dans Odoo (ID document: {document_id})")
                 if facture_id not in progression['factures_traitees']:
                     progression['factures_traitees'].append(facture_id)
                 progression['derniere_facture_id'] = max(
@@ -754,20 +810,24 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
                 sauvegarder_progression(progression)
             except Exception as e:
                 stats['erreurs'] += 1
-                if not test_mode or i <= 10:
-                    print(f"   ❌ Erreur création document: {str(e)[:80]}")
+                log_detail(f"   ❌ ERREUR création document: {str(e)}")
             
             # Mesurer le temps
             temps_facture = time.time() - debut_facture
             stats['temps_par_facture'].append(temps_facture)
+            log_detail(f"   ⏱️  Temps de traitement: {temps_facture:.2f}s")
+            log_detail(f"   ✅ Facture {facture_numero} traitée avec succès")
+            log_detail("")  # Ligne vide pour séparer
             
             # Afficher la progression
             if i % 50 == 0:
                 progress_pct = (i * 100) // len(factures_a_traiter_final)
                 temps_moyen = sum(stats['temps_par_facture']) / len(stats['temps_par_facture'])
                 temps_restant = (len(factures_a_traiter_final) - i) * temps_moyen
-                print(f"\n   📊 Progression: {i}/{len(factures_a_traiter_final)} ({progress_pct}%)")
-                print(f"   ⏱️  Temps moyen: {temps_moyen:.2f}s/facture | Temps restant estimé: {temps_restant/60:.1f} min")
+                log_detail("=" * 80, timestamp=False)
+                log_detail(f"📊 PROGRESSION: {i}/{len(factures_a_traiter_final)} ({progress_pct}%)", timestamp=False)
+                log_detail(f"⏱️  Temps moyen: {temps_moyen:.2f}s/facture | Temps restant estimé: {temps_restant/60:.1f} min", timestamp=False)
+                log_detail("=" * 80, timestamp=False)
             
             # Pas de pause systématique pour optimiser (la session HTTP est réutilisée)
         
