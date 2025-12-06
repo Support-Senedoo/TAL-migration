@@ -623,24 +623,34 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
         # Filtrer les factures déjà traitées
         factures_a_traiter = [f for f in factures if f['id'] not in factures_deja_traitees]
         
-        # Vérifier dans la base de données (seulement si on a des factures à traiter)
+        # Vérifier dans la base de données PAR BATCH (optimisation pour grande quantité)
         factures_ids_a_traiter = [f['id'] for f in factures_a_traiter]
         documents_existants = []
+        BATCH_SIZE_VERIF = 100  # Vérifier 100 factures à la fois pour éviter les timeouts
+        
         if factures_ids_a_traiter:  # Éviter de passer une liste vide
-            try:
-                documents_existants = models.execute_kw(
-                    db, uid, password,
-                    'documents.document',
-                    'search_read',
-                    [[
-                        ['res_model', '=', 'account.move'],
-                        ['res_id', 'in', factures_ids_a_traiter]
-                    ]],
-                    {'fields': ['res_id']}
-                )
-            except Exception as e:
-                log_detail(f"⚠️  Erreur lors de la vérification des documents existants: {str(e)}")
-                documents_existants = []
+            print(f"🔍 Vérification des documents existants (batch de {BATCH_SIZE_VERIF})...")
+            # Traiter par batch pour éviter les timeouts avec de grandes listes
+            for i in range(0, len(factures_ids_a_traiter), BATCH_SIZE_VERIF):
+                batch = factures_ids_a_traiter[i:i + BATCH_SIZE_VERIF]
+                try:
+                    batch_docs = models.execute_kw(
+                        db, uid, password,
+                        'documents.document',
+                        'search_read',
+                        [[
+                            ['res_model', '=', 'account.move'],
+                            ['res_id', 'in', batch]
+                        ]],
+                        {'fields': ['res_id']}
+                    )
+                    if batch_docs:
+                        documents_existants.extend(batch_docs)
+                except Exception as e:
+                    log_detail(f"⚠️  Erreur lors de la vérification batch: {str(e)}")
+                # Afficher progression tous les 500 factures
+                if (i + BATCH_SIZE_VERIF) % 500 == 0:
+                    print(f"   ✅ Vérifié {min(i + BATCH_SIZE_VERIF, len(factures_ids_a_traiter))}/{len(factures_ids_a_traiter)} factures...")
         
         factures_avec_document = set()
         if documents_existants:
@@ -684,9 +694,15 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
         dossiers_clients = {}
         progression['factures_traitees'] = list(set(progression.get('factures_traitees', [])))
         
+        # Paramètres d'optimisation
+        LOG_FREQUENCY = 10  # Logger toutes les 10 factures
+        SAVE_FREQUENCY = 10  # Sauvegarder toutes les 10 factures
+        
         print("=" * 60)
         print("TRAITEMENT DES FACTURES")
         print("=" * 60)
+        print("⚡ Mode optimisé activé (logs réduits pour plus de vitesse)")
+        print("")
         
         for i, facture in enumerate(factures_a_traiter_final, 1):
             debut_facture = time.time()
@@ -696,8 +712,10 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
             partner_id = partner_info[0] if partner_info else None
             partner_name = partner_info[1] if len(partner_info) > 1 else 'Client inconnu'
             
-            # Logger chaque facture
-            log_detail(f"[{i}/{len(factures_a_traiter_final)}] Traitement facture {facture_numero} (ID: {facture_id}) - Client: {partner_name}")
+            # Logger seulement toutes les 10 factures pour optimiser (gain de performance)
+            LOG_FREQUENCY = 10
+            if i % LOG_FREQUENCY == 0 or i == 1:
+                log_detail(f"[{i}/{len(factures_a_traiter_final)}] Traitement facture {facture_numero} (ID: {facture_id}) - Client: {partner_name}")
             
             if not partner_id:
                 log_detail(f"   ❌ ERREUR: Pas de client associé à la facture {facture_numero}")
@@ -712,7 +730,8 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
                 if dossier_id:
                     dossiers_clients[partner_id] = dossier_id
                     stats['dossiers_crees'] += 1
-                    log_detail(f"   📁 Dossier créé pour client: {partner_name} (ID dossier: {dossier_id})")
+                    if i % LOG_FREQUENCY == 0 or i == 1:
+                        log_detail(f"   📁 Dossier créé pour client: {partner_name} (ID dossier: {dossier_id})")
                 else:
                     log_detail(f"   ❌ ERREUR: Impossible de créer le dossier pour {partner_name}")
                     stats['erreurs'] += 1
@@ -721,27 +740,7 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
                 dossier_id = dossiers_clients[partner_id]
                 stats['dossiers_existants'] += 1
             
-            # Vérifier si le document existe déjà
-            documents_existants = models.execute_kw(
-                db, uid, password,
-                'documents.document',
-                'search',
-                [[
-                    ['res_model', '=', 'account.move'],
-                    ['res_id', '=', facture_id]
-                ]]
-            )
-            
-            if documents_existants:
-                stats['documents_deja_existants'] += 1
-                log_detail(f"   ℹ️  Document déjà existant pour facture {facture_numero}, ignoré")
-                progression['factures_traitees'].append(facture_id)
-                progression['derniere_facture_id'] = max(
-                    progression.get('derniere_facture_id', 0),
-                    facture_id
-                )
-                sauvegarder_progression(progression)
-                continue
+            # Pas de vérification individuelle - déjà faite en batch avant la boucle
             
             # Identifier le modèle PDF
             report_id, report_name = identifier_modele_pdf(models, db, uid, password, facture_id)
@@ -756,22 +755,24 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
                 else:
                     report_name = 'account.report_invoice'
             
-            # Logger le modèle PDF utilisé
-            try:
-                modele_info = models.execute_kw(
-                    db, uid, password,
-                    'ir.actions.report',
-                    'read',
-                    [[report_id]],
-                    {'fields': ['name']}
-                ) if report_id else None
-                modele_nom = modele_info[0]['name'] if modele_info else 'Par défaut'
-            except:
-                modele_nom = report_name if report_name else 'Par défaut'
-            log_detail(f"   📄 Modèle PDF utilisé: {modele_nom}")
+            # Logger le modèle PDF seulement toutes les 10 factures
+            if i % LOG_FREQUENCY == 0 or i == 1:
+                try:
+                    modele_info = models.execute_kw(
+                        db, uid, password,
+                        'ir.actions.report',
+                        'read',
+                        [[report_id]],
+                        {'fields': ['name']}
+                    ) if report_id else None
+                    modele_nom = modele_info[0]['name'] if modele_info else 'Par défaut'
+                except:
+                    modele_nom = report_name if report_name else 'Par défaut'
+                log_detail(f"   📄 Modèle PDF utilisé: {modele_nom}")
             
             # Générer le PDF
-            log_detail(f"   🔄 Génération PDF pour facture {facture_numero}...")
+            if i % LOG_FREQUENCY == 0 or i == 1:
+                log_detail(f"   🔄 Génération PDF pour facture {facture_numero}...")
             contenu_pdf = generer_pdf_facture_http(facture_id, report_name, models, db, password)
             
             if not contenu_pdf:
@@ -783,12 +784,11 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
             chemin_local = sauvegarder_pdf_local(facture_numero, contenu_pdf)
             if chemin_local:
                 stats['pdfs_locaux'] += 1
-                log_detail(f"   💾 PDF sauvegardé localement: {chemin_local.name}")
-            else:
-                log_detail(f"   ⚠️  ATTENTION: PDF non sauvegardé localement pour {facture_numero}")
+            # Pas de log pour chaque sauvegarde locale (trop verbeux)
             
             # Créer le document dans Odoo
-            log_detail(f"   📎 Création document dans Odoo pour facture {facture_numero}...")
+            if i % LOG_FREQUENCY == 0 or i == 1:
+                log_detail(f"   📎 Création document dans Odoo pour facture {facture_numero}...")
             pdf_base64 = base64.b64encode(contenu_pdf).decode('utf-8')
             try:
                 document_id = models.execute_kw(
@@ -806,14 +806,18 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
                     }]
                 )
                 stats['documents_crees'] += 1
-                log_detail(f"   ✅ Document créé avec succès dans Odoo (ID document: {document_id})")
+                if i % LOG_FREQUENCY == 0 or i == 1:
+                    log_detail(f"   ✅ Document créé avec succès dans Odoo (ID document: {document_id})")
                 if facture_id not in progression['factures_traitees']:
                     progression['factures_traitees'].append(facture_id)
                 progression['derniere_facture_id'] = max(
                     progression.get('derniere_facture_id', 0),
                     facture_id
                 )
-                sauvegarder_progression(progression)
+                # Sauvegarder la progression toutes les 10 factures au lieu de chaque fois (optimisation)
+                SAVE_FREQUENCY = 10
+                if i % SAVE_FREQUENCY == 0:
+                    sauvegarder_progression(progression)
             except Exception as e:
                 stats['erreurs'] += 1
                 log_detail(f"   ❌ ERREUR création document: {str(e)}")
@@ -821,24 +825,29 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
             # Mesurer le temps
             temps_facture = time.time() - debut_facture
             stats['temps_par_facture'].append(temps_facture)
-            log_detail(f"   ⏱️  Temps de traitement: {temps_facture:.2f}s")
-            log_detail(f"   ✅ Facture {facture_numero} traitée avec succès")
-            log_detail("")  # Ligne vide pour séparer
+            # Logger seulement toutes les 10 factures
+            if i % LOG_FREQUENCY == 0 or i == 1:
+                log_detail(f"   ⏱️  Temps de traitement: {temps_facture:.2f}s")
+                log_detail(f"   ✅ Facture {facture_numero} traitée avec succès")
+                log_detail("")  # Ligne vide pour séparer
             
-            # Afficher la progression
+            # Afficher la progression toutes les 50 factures (déjà optimisé)
             if i % 50 == 0:
                 progress_pct = (i * 100) // len(factures_a_traiter_final)
                 temps_moyen = sum(stats['temps_par_facture']) / len(stats['temps_par_facture'])
                 temps_restant = (len(factures_a_traiter_final) - i) * temps_moyen
-                log_detail("=" * 80, timestamp=False)
-                log_detail(f"📊 PROGRESSION: {i}/{len(factures_a_traiter_final)} ({progress_pct}%)", timestamp=False)
-                log_detail(f"⏱️  Temps moyen: {temps_moyen:.2f}s/facture | Temps restant estimé: {temps_restant/60:.1f} min", timestamp=False)
-                log_detail("=" * 80, timestamp=False)
+                factures_par_minute = 60 / temps_moyen if temps_moyen > 0 else 0
+                print("\n" + "=" * 80)
+                print(f"📊 PROGRESSION: {i}/{len(factures_a_traiter_final)} ({progress_pct}%)")
+                print(f"⏱️  Temps moyen: {temps_moyen:.2f}s/facture | ⚡ Vitesse: {factures_par_minute:.1f} factures/min")
+                print(f"⏳ Temps restant estimé: {temps_restant/60:.1f} min")
+                print("=" * 80 + "\n")
             
             # Pas de pause systématique pour optimiser (la session HTTP est réutilisée)
         
         # Résumé final
         temps_total = time.time() - debut_total
+        # Sauvegarder la progression finale (toujours à la fin)
         sauvegarder_progression(progression)
         
         print("\n" + "=" * 60)
