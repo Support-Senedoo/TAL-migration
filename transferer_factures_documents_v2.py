@@ -20,6 +20,10 @@ from datetime import datetime
 from pathlib import Path
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+import urllib3
+
+# Désactiver les avertissements SSL pour les requêtes HTTPS non vérifiées
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Dossier local pour stocker les PDFs
 DOSSIER_PDF_LOCAL = Path(__file__).parent / 'Factures_pdf_TAL'
