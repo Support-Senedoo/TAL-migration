@@ -1,0 +1,10 @@
+Mise à jour TAL-migration: Transfert factures vers Documents
+
+- Script optimisé avec session HTTP réutilisable
+- Correction structure dossiers Finance/Factures clients
+- Ajout champ owner_id requis pour les dossiers
+- Sélection automatique modèle PDF selon lignes facture
+- Stockage local des PDFs dans Factures_pdf_TAL/
+- Système de progression et reprise automatique
+- Performance améliorée: ~5.45s/facture
+

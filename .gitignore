@@ -1,0 +1,70 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Configuration locale et fichiers sensibles
+config_local.py
+.env
+*.secret
+config_prod.py
+config.py  # Fichier de configuration avec mots de passe (ne pas commiter)
+
+# Fichiers de progression et données temporaires
+progression_transfert.json
+Factures_pdf_TAL/
+*.xlsx
+*.xls
+*.csv
+
+# PDFs de test (ne pas commiter les PDFs)
+*.pdf
+
+# Fichiers temporaires
+temp/
+tmp/
+*.tmp
+
+
+
+
+
+
+
+
