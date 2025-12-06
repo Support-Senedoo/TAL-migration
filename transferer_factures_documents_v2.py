@@ -874,14 +874,14 @@ if __name__ == "__main__":
     print("TAL-migration - Base de PRODUCTION (tal-senegal)")
     print("=" * 60)
     
-    # Mode test par défaut si aucun argument
-    if len(sys.argv) > 1 and sys.argv[1] == '--all':
-        print("⚠️  MODE COMPLET: Traitement de TOUTES les factures")
-        transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=False)
-    else:
+    # Mode complet par défaut (toutes les factures)
+    if len(sys.argv) > 1 and sys.argv[1] == '--test':
         print("🔬 MODE TEST: Traitement de 100 factures pour évaluer le temps")
-        print("   Utilisez 'python transferer_factures_documents_v2.py --all' pour traiter toutes les factures")
         transferer_factures_vers_documents(limit=100, reprendre=True, test_mode=True)
+    else:
+        print("⚠️  MODE COMPLET: Traitement de TOUTES les factures")
+        print("   Utilisez 'python transferer_factures_documents_v2.py --test' pour un test sur 100 factures")
+        transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=False)
     
     print("\n" + "=" * 60)
 
