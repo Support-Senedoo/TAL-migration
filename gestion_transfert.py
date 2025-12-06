@@ -288,15 +288,78 @@ def gerer_transfert(afficher_progression=True):
         return False
 
 
+def mode_watchdog(intervalle_verification=60):
+    """Mode watchdog qui surveille et relance automatiquement."""
+    log_message("🔄 Mode WATCHDOG activé")
+    log_message(f"⏱️  Vérification toutes les {intervalle_verification} secondes")
+    log_message("💡 Le script sera relancé automatiquement s'il s'arrête")
+    log_message("🛑 Appuyez sur Ctrl+C pour arrêter le watchdog")
+    log_message("")
+    
+    try:
+        while True:
+            script_en_cours = verifier_script_en_cours()
+            activite_recente = verifier_activite_recente()
+            
+            if not script_en_cours or not activite_recente:
+                if not script_en_cours:
+                    log_message("⚠️  Script arrêté détecté - Relance automatique...")
+                else:
+                    log_message("⚠️  Script bloqué détecté - Relance automatique...")
+                
+                # Arrêter le processus bloqué si nécessaire
+                if script_en_cours:
+                    try:
+                        subprocess.run(['pkill', '-f', 'transferer_factures_documents_v2.py'], timeout=5)
+                        time.sleep(2)
+                    except:
+                        pass
+                
+                # Relancer
+                progression = obtenir_progression()
+                nb_factures = len(progression.get('factures_traitees', []))
+                log_message(f"📊 Progression avant relance: {nb_factures} factures")
+                
+                if lancer_script():
+                    log_message("✅ Script relancé avec succès")
+                else:
+                    log_message("❌ Erreur lors de la relance")
+                    log_message("⏱️  Nouvelle tentative dans 30 secondes...")
+                    time.sleep(30)
+                    continue
+            else:
+                # Le script tourne bien, afficher un statut périodique
+                progression = obtenir_progression()
+                nb_factures = len(progression.get('factures_traitees', []))
+                derniere_id = progression.get('derniere_facture_id', 0)
+                log_message(f"✅ Script actif - {nb_factures} factures traitées (dernière ID: {derniere_id})")
+            
+            # Attendre avant la prochaine vérification
+            time.sleep(intervalle_verification)
+            
+    except KeyboardInterrupt:
+        log_message("\n⚠️  Watchdog arrêté par l'utilisateur")
+        log_message("💡 Le script de transfert continue de tourner en arrière-plan")
+
+
 if __name__ == "__main__":
     import argparse
     
     parser = argparse.ArgumentParser(description='Gestion automatique du transfert des factures')
     parser.add_argument('--no-display', action='store_true', help='Ne pas afficher la progression en temps réel')
+    parser.add_argument('--watchdog', action='store_true', help='Mode watchdog - surveille et relance automatiquement')
+    parser.add_argument('--interval', type=int, default=60, help='Intervalle de vérification en secondes (défaut: 60)')
     args = parser.parse_args()
     
     try:
-        gerer_transfert(afficher_progression=not args.no_display)
+        if args.watchdog:
+            # Mode watchdog - surveille en continu
+            gerer_transfert(afficher_progression=False)
+            time.sleep(5)  # Attendre un peu après le démarrage
+            mode_watchdog(intervalle_verification=args.interval)
+        else:
+            # Mode normal - lance une fois
+            gerer_transfert(afficher_progression=not args.no_display)
     except KeyboardInterrupt:
         log_message("\n⚠️  Interrompu par l'utilisateur")
     except Exception as e:
