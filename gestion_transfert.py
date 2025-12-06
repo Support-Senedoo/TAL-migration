@@ -177,6 +177,7 @@ def suivre_logs_temps_reel(duree_secondes=60):
     try:
         log_files = list(Path(__file__).parent.glob('transfert_detaille_*.log'))
         if not log_files:
+            log_message("⚠️  Aucun fichier log trouvé")
             return
         
         latest_log = max(log_files, key=os.path.getmtime)
@@ -185,19 +186,22 @@ def suivre_logs_temps_reel(duree_secondes=60):
         
         # Lire les dernières lignes d'abord
         try:
-            with open(latest_log, 'r', encoding='utf-8') as f:
+            with open(latest_log, 'r', encoding='utf-8', errors='ignore') as f:
                 lines = f.readlines()
                 if lines:
-                    print("\n".join(lines[-10:]))  # Afficher les 10 dernières lignes
-        except:
-            pass
+                    print("\n" + "=" * 80)
+                    print("📊 DERNIÈRES LIGNES DU LOG")
+                    print("=" * 80 + "\n")
+                    print("\n".join(lines[-15:]))  # Afficher les 15 dernières lignes
+        except Exception as e:
+            log_message(f"⚠️  Erreur lecture initiale: {e}")
         
         # Suivre en temps réel
         start_time = time.time()
         last_size = latest_log.stat().st_size if latest_log.exists() else 0
         
         print("\n" + "=" * 80)
-        print("📊 SUIVI EN TEMPS RÉEL (Appuyez sur Ctrl+C pour arrêter)")
+        print(f"📊 SUIVI EN TEMPS RÉEL (durée: {duree_secondes}s - Appuyez sur Ctrl+C pour arrêter)")
         print("=" * 80 + "\n")
         
         try:
@@ -206,19 +210,24 @@ def suivre_logs_temps_reel(duree_secondes=60):
                     current_size = latest_log.stat().st_size
                     if current_size > last_size:
                         # Lire les nouvelles lignes
-                        with open(latest_log, 'r', encoding='utf-8', errors='ignore') as f:
-                            f.seek(last_size)
-                            new_content = f.read()
-                            if new_content:
-                                print(new_content, end='', flush=True)
-                                last_size = current_size
+                        try:
+                            with open(latest_log, 'r', encoding='utf-8', errors='ignore') as f:
+                                f.seek(last_size)
+                                new_content = f.read()
+                                if new_content:
+                                    print(new_content, end='', flush=True)
+                                    last_size = current_size
+                        except Exception as e:
+                            log_message(f"⚠️  Erreur lecture: {e}")
                 
-                time.sleep(1)  # Vérifier toutes les secondes
+                time.sleep(0.5)  # Vérifier toutes les 0.5 secondes
         except KeyboardInterrupt:
             print("\n\n⚠️  Suivi interrompu par l'utilisateur")
         
     except Exception as e:
         log_message(f"⚠️  Erreur suivi logs: {e}")
+        import traceback
+        log_message(traceback.format_exc())
 
 
 def gerer_transfert(afficher_progression=True):
@@ -243,7 +252,9 @@ def gerer_transfert(afficher_progression=True):
         log_message("✅ Le script tourne correctement et est actif")
         log_message("")
         if afficher_progression:
+            log_message("")
             log_message("📊 Affichage de la progression en temps réel...")
+            log_message("💡 Le script tourne en arrière-plan, suivi des logs ci-dessous")
             log_message("")
             suivre_logs_temps_reel(duree_secondes=300)  # 5 minutes
         else:
@@ -272,10 +283,14 @@ def gerer_transfert(afficher_progression=True):
         log_message("")
         
         if afficher_progression:
-            log_message("📊 Attente de démarrage (5 secondes)...")
-            time.sleep(5)
+            log_message("📊 Attente de démarrage (3 secondes)...")
+            time.sleep(3)
             log_message("")
+            log_message("=" * 80)
             suivre_logs_temps_reel(duree_secondes=300)  # 5 minutes de suivi
+            log_message("")
+            log_message("💡 Le suivi s'est terminé mais le script continue en arrière-plan")
+            log_message("📝 Pour continuer à suivre: tail -f transfert_detaille_*.log")
         else:
             log_message("📝 Pour suivre en temps réel:")
             log_message("   tail -f transfert_detaille_*.log")
