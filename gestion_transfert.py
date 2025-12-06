@@ -172,7 +172,56 @@ def afficher_statut():
     log_message("=" * 80)
 
 
-def gerer_transfert():
+def suivre_logs_temps_reel(duree_secondes=60):
+    """Suit les logs en temps réel pendant une durée limitée."""
+    try:
+        log_files = list(Path(__file__).parent.glob('transfert_detaille_*.log'))
+        if not log_files:
+            return
+        
+        latest_log = max(log_files, key=os.path.getmtime)
+        log_message(f"📄 Suivi du log: {latest_log.name}")
+        log_message("=" * 80)
+        
+        # Lire les dernières lignes d'abord
+        try:
+            with open(latest_log, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+                if lines:
+                    print("\n".join(lines[-10:]))  # Afficher les 10 dernières lignes
+        except:
+            pass
+        
+        # Suivre en temps réel
+        start_time = time.time()
+        last_size = latest_log.stat().st_size if latest_log.exists() else 0
+        
+        print("\n" + "=" * 80)
+        print("📊 SUIVI EN TEMPS RÉEL (Appuyez sur Ctrl+C pour arrêter)")
+        print("=" * 80 + "\n")
+        
+        try:
+            while time.time() - start_time < duree_secondes:
+                if latest_log.exists():
+                    current_size = latest_log.stat().st_size
+                    if current_size > last_size:
+                        # Lire les nouvelles lignes
+                        with open(latest_log, 'r', encoding='utf-8', errors='ignore') as f:
+                            f.seek(last_size)
+                            new_content = f.read()
+                            if new_content:
+                                print(new_content, end='', flush=True)
+                                last_size = current_size
+                
+                time.sleep(1)  # Vérifier toutes les secondes
+        except KeyboardInterrupt:
+            print("\n\n⚠️  Suivi interrompu par l'utilisateur")
+        
+    except Exception as e:
+        log_message(f"⚠️  Erreur suivi logs: {e}")
+
+
+def gerer_transfert(afficher_progression=True):
     """Gère automatiquement le transfert."""
     log_message("🚀 Démarrage de la gestion automatique du transfert")
     log_message("")
@@ -192,8 +241,14 @@ def gerer_transfert():
     
     if script_en_cours and activite_recente:
         log_message("✅ Le script tourne correctement et est actif")
-        log_message("💡 Le script continuera automatiquement")
-        log_message("📝 Pour suivre: tail -f transfert_detaille_*.log")
+        log_message("")
+        if afficher_progression:
+            log_message("📊 Affichage de la progression en temps réel...")
+            log_message("")
+            suivre_logs_temps_reel(duree_secondes=300)  # 5 minutes
+        else:
+            log_message("💡 Le script continuera automatiquement")
+            log_message("📝 Pour suivre: tail -f transfert_detaille_*.log")
         return True
     
     if script_en_cours and not activite_recente:
@@ -215,8 +270,16 @@ def gerer_transfert():
         log_message("   - Traiter toutes les factures restantes")
         log_message("   - Sauvegarder la progression automatiquement")
         log_message("")
-        log_message("📝 Pour suivre en temps réel:")
-        log_message("   tail -f transfert_detaille_*.log")
+        
+        if afficher_progression:
+            log_message("📊 Attente de démarrage (5 secondes)...")
+            time.sleep(5)
+            log_message("")
+            suivre_logs_temps_reel(duree_secondes=300)  # 5 minutes de suivi
+        else:
+            log_message("📝 Pour suivre en temps réel:")
+            log_message("   tail -f transfert_detaille_*.log")
+        
         log_message("")
         log_message("✅ Tout est configuré ! Le script tourne maintenant.")
         return True
@@ -226,8 +289,14 @@ def gerer_transfert():
 
 
 if __name__ == "__main__":
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Gestion automatique du transfert des factures')
+    parser.add_argument('--no-display', action='store_true', help='Ne pas afficher la progression en temps réel')
+    args = parser.parse_args()
+    
     try:
-        gerer_transfert()
+        gerer_transfert(afficher_progression=not args.no_display)
     except KeyboardInterrupt:
         log_message("\n⚠️  Interrompu par l'utilisateur")
     except Exception as e:
