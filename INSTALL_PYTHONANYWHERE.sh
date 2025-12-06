@@ -13,13 +13,9 @@ cd ~/TAL-migration || exit 1
 
 # Cloner depuis GitHub
 echo "📥 Clonage depuis GitHub..."
-echo "⚠️  Remplacez VOTRE_USERNAME par votre nom d'utilisateur GitHub"
-read -p "Nom d'utilisateur GitHub: " github_user
-
-if [ -z "$github_user" ]; then
-    echo "❌ Nom d'utilisateur requis"
-    exit 1
-fi
+# Utiliser Support-Senedoo par défaut
+github_user="Support-Senedoo"
+echo "📥 Clonage depuis GitHub (Support-Senedoo)..."
 
 git clone https://github.com/${github_user}/TAL-migration.git .
 
@@ -90,4 +86,5 @@ echo "   1. Modifiez config.py avec vos identifiants Odoo"
 echo "   2. Testez la connexion: python3.10 connexion_odoo.py"
 echo "   3. Lancez un test: python3.10 transferer_factures_documents_v2.py"
 echo ""
+
 
