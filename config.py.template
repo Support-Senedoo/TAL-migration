@@ -27,3 +27,4 @@ DEFAULT_PARAMS = {
 # Pour permettre l'importation
 __all__ = ['ODOO_CONFIG', 'DEFAULT_PARAMS']
 
+

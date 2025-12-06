@@ -187,3 +187,4 @@ Si vous avez des problèmes, consultez :
 - `DEPLOIEMENT_PYTHONANYWHERE.md` - Guide déploiement
 - `DEMARRAGE_RAPIDE.md` - Guide rapide
 
+

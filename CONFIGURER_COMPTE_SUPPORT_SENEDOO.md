@@ -80,3 +80,4 @@ Pour gérer plusieurs comptes GitHub sur la même machine, vous pouvez :
 3. **Utiliser SSH keys** (plus avancé)
    - Une clé SSH par compte GitHub
 
+

@@ -8,3 +8,4 @@ Mise à jour TAL-migration: Transfert factures vers Documents
 - Système de progression et reprise automatique
 - Performance améliorée: ~5.45s/facture
 
+

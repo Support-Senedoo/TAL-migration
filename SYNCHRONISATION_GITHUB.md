@@ -145,3 +145,4 @@ git status --ignored
 - `DEPLOIEMENT_PYTHONANYWHERE.md` - Guide déploiement détaillé
 - `DEMARRAGE_RAPIDE.md` - Guide de démarrage rapide
 
+

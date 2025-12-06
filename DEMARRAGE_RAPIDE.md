@@ -100,3 +100,4 @@ python3.10 gestion_progression.py nettoyer
 - Créez-le manuellement sur chaque machine (local et PythonAnywhere)
 - Utilisez `config.py.template` comme modèle
 
+
