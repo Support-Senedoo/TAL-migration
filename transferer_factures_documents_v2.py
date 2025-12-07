@@ -25,9 +25,9 @@ import urllib3
 # Désactiver les avertissements SSL pour les requêtes HTTPS non vérifiées
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# Dossier local pour stocker les PDFs
-DOSSIER_PDF_LOCAL = Path(__file__).parent / 'Factures_pdf_TAL'
-DOSSIER_PDF_LOCAL.mkdir(exist_ok=True)
+# Dossier local désactivé - les PDFs sont uniquement stockés dans Odoo Documents
+# DOSSIER_PDF_LOCAL = Path(__file__).parent / 'Factures_pdf_TAL'
+# DOSSIER_PDF_LOCAL.mkdir(exist_ok=True)
 
 # Cache des modèles de rapport pour éviter les recherches répétées
 CACHE_MODELES = {}
@@ -475,32 +475,34 @@ def obtenir_ou_creer_dossier_client(models, db, uid, password, nom_client, partn
             return None
 
 
-def sauvegarder_pdf_local(facture_numero, contenu_pdf):
-    """
-    Sauvegarde le PDF localement.
-    
-    Args:
-        facture_numero: Numéro de la facture
-        contenu_pdf: Contenu PDF en bytes
-    
-    Returns:
-        Path: Chemin du fichier sauvegardé ou None
-    """
-    try:
-        # Nettoyer le numéro pour le nom de fichier
-        import re
-        nom_fichier = re.sub(r'[<>:"/\\|?*]', '_', facture_numero)
-        if not nom_fichier.endswith('.pdf'):
-            nom_fichier += '.pdf'
-        
-        chemin_fichier = DOSSIER_PDF_LOCAL / nom_fichier
-        
-        with open(chemin_fichier, 'wb') as f:
-            f.write(contenu_pdf)
-        
-        return chemin_fichier
-    except Exception as e:
-        return None
+# Fonction désactivée - les PDFs ne sont plus sauvegardés localement
+# Ils sont uniquement stockés dans le module Documents d'Odoo
+# def sauvegarder_pdf_local(facture_numero, contenu_pdf):
+#     """
+#     Sauvegarde le PDF localement.
+#     
+#     Args:
+#         facture_numero: Numéro de la facture
+#         contenu_pdf: Contenu PDF en bytes
+#     
+#     Returns:
+#         Path: Chemin du fichier sauvegardé ou None
+#     """
+#     try:
+#         # Nettoyer le numéro pour le nom de fichier
+#         import re
+#         nom_fichier = re.sub(r'[<>:"/\\|?*]', '_', facture_numero)
+#         if not nom_fichier.endswith('.pdf'):
+#             nom_fichier += '.pdf'
+#         
+#         chemin_fichier = DOSSIER_PDF_LOCAL / nom_fichier
+#         
+#         with open(chemin_fichier, 'wb') as f:
+#             f.write(contenu_pdf)
+#         
+#         return chemin_fichier
+#     except Exception as e:
+#         return None
 
 
 def charger_progression():
@@ -685,7 +687,6 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
             'dossiers_existants': 0,
             'documents_crees': 0,
             'documents_deja_existants': 0,
-            'pdfs_locaux': 0,
             'erreurs': 0,
             'sans_pdf': 0,
             'temps_par_facture': []
@@ -780,11 +781,7 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
                 stats['sans_pdf'] += 1
                 continue
             
-            # Sauvegarder localement
-            chemin_local = sauvegarder_pdf_local(facture_numero, contenu_pdf)
-            if chemin_local:
-                stats['pdfs_locaux'] += 1
-            # Pas de log pour chaque sauvegarde locale (trop verbeux)
+            # Pas de sauvegarde locale - directement dans Odoo Documents seulement
             
             # Créer le document dans Odoo
             if i % LOG_FREQUENCY == 0 or i == 1:
@@ -857,7 +854,6 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
         print(f"📁 Dossiers créés          : {stats['dossiers_crees']}")
         print(f"📁 Dossiers réutilisés      : {stats['dossiers_existants']}")
         print(f"📎 Documents créés          : {stats['documents_crees']}")
-        print(f"💾 PDFs sauvegardés localement: {stats['pdfs_locaux']}")
         print(f"📎 Documents déjà existants: {stats['documents_deja_existants']}")
         print(f"⚠️  Factures sans PDF       : {stats['sans_pdf']}")
         print(f"❌ Erreurs                  : {stats['erreurs']}")
