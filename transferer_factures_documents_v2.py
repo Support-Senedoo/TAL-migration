@@ -697,7 +697,8 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
         
         # Paramètres d'optimisation
         LOG_FREQUENCY = 10  # Logger toutes les 10 factures
-        SAVE_FREQUENCY = 10  # Sauvegarder toutes les 10 factures
+        # NOTE: La progression est sauvegardée immédiatement après chaque facture traitée
+        # pour éviter de retraiter les factures en cas de blocage
         
         print("=" * 60)
         print("TRAITEMENT DES FACTURES")
