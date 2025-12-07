@@ -41,19 +41,29 @@ def compter_factures_odoo():
     
     print("📊 Comptage des factures clients dans Odoo...")
     try:
-        # Compter toutes les factures clients (out_invoice)
-        factures_ids = models.execute_kw(
-            db, uid, password,
-            'account.move',
-            'search',
-            [[['move_type', '=', 'out_invoice']]],
-            {'count': True}
-        )
+        # Utiliser search_count() si disponible, sinon compter manuellement
+        try:
+            # Essayer search_count() d'abord (méthode recommandée)
+            total_factures = models.execute_kw(
+                db, uid, password,
+                'account.move',
+                'search_count',
+                [[['move_type', '=', 'out_invoice']]]
+            )
+        except:
+            # Si search_count() n'existe pas, utiliser search() et compter
+            factures_ids = models.execute_kw(
+                db, uid, password,
+                'account.move',
+                'search',
+                [[['move_type', '=', 'out_invoice']]]
+            )
+            total_factures = len(factures_ids)
         
-        print(f"✅ Total de factures clients dans Odoo: {factures_ids}")
+        print(f"✅ Total de factures clients dans Odoo: {total_factures}")
         print()
         
-        return factures_ids
+        return total_factures
     except Exception as e:
         print(f"❌ Erreur lors du comptage: {e}")
         return None
@@ -68,17 +78,30 @@ def verifier_documents_existants(factures_ids_traitees):
         return None
     
     try:
-        # Compter les documents liés aux factures
-        documents = models.execute_kw(
-            db, uid, password,
-            'documents.document',
-            'search',
-            [[
-                ['res_model', '=', 'account.move'],
-                ['res_id', 'in', factures_ids_traitees]
-            ]],
-            {'count': True}
-        )
+        # Utiliser search_count() si disponible, sinon compter manuellement
+        try:
+            # Essayer search_count() d'abord
+            documents = models.execute_kw(
+                db, uid, password,
+                'documents.document',
+                'search_count',
+                [[
+                    ['res_model', '=', 'account.move'],
+                    ['res_id', 'in', factures_ids_traitees]
+                ]]
+            )
+        except:
+            # Si search_count() n'existe pas, utiliser search() et compter
+            documents_ids = models.execute_kw(
+                db, uid, password,
+                'documents.document',
+                'search',
+                [[
+                    ['res_model', '=', 'account.move'],
+                    ['res_id', 'in', factures_ids_traitees]
+                ]]
+            )
+            documents = len(documents_ids)
         
         return documents
     except Exception as e:
