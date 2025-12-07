@@ -68,3 +68,32 @@ python3.10 afficher_progression.py --watch
 tail -f transfert_detaille_*.log
 ```
 
+## Se reconnecter après une déconnexion
+
+```bash
+# 1. Se reconnecter
+ssh senedoo@ssh.pythonanywhere.com
+
+# 2. Aller dans le dossier
+cd ~/TAL-migration
+
+# 3. Vérifier si le script tourne
+python3.10 verifier_blocage.py
+
+# 4. Voir la progression
+python3.10 afficher_progression.py --resume
+```
+
+## Vérifier rapidement si le script tourne
+
+```bash
+# Vérifier les processus
+ps aux | grep transferer_factures_documents_v2.py
+
+# OU avec pgrep
+pgrep -f transferer_factures_documents_v2.py
+```
+
+- **Si une ligne s'affiche** : Le script tourne ✅
+- **Si rien** : Le script s'est arrêté ❌
+
