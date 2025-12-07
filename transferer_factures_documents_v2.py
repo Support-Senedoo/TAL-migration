@@ -293,7 +293,8 @@ def generer_pdf_facture_http(facture_id, report_name, models, db, password):
     try:
         # Générer le PDF directement (la session est déjà authentifiée)
         pdf_url = f"{ODOO_CONFIG['URL']}report/pdf/{report_name}/{facture_id}"
-        pdf_response = session.get(pdf_url, verify=False, timeout=30)
+        # Timeout augmenté à 60 secondes pour les factures complexes
+        pdf_response = session.get(pdf_url, verify=False, timeout=60)
         
         if pdf_response.status_code == 200 and pdf_response.content.startswith(b'%PDF'):
             return pdf_response.content
@@ -304,13 +305,14 @@ def generer_pdf_facture_http(facture_id, report_name, models, db, password):
             SESSION_HTTP = None
             session = initialiser_session_http()
             if session:
-                pdf_response = session.get(pdf_url, verify=False, timeout=30)
+                pdf_response = session.get(pdf_url, verify=False, timeout=60)
                 if pdf_response.status_code == 200 and pdf_response.content.startswith(b'%PDF'):
                     return pdf_response.content
         
         return None
         
     except Exception as e:
+        # Gérer les timeouts et autres erreurs de manière silencieuse
         return None
 
 
