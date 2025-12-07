@@ -811,10 +811,9 @@ def transferer_factures_vers_documents(limit=None, reprendre=True, test_mode=Fal
                     progression.get('derniere_facture_id', 0),
                     facture_id
                 )
-                # Sauvegarder la progression toutes les 10 factures au lieu de chaque fois (optimisation)
-                SAVE_FREQUENCY = 10
-                if i % SAVE_FREQUENCY == 0:
-                    sauvegarder_progression(progression)
+                # IMPORTANT: Sauvegarder immédiatement après chaque facture traitée
+                # pour éviter de retraiter si le script bloque
+                sauvegarder_progression(progression)
             except Exception as e:
                 stats['erreurs'] += 1
                 log_detail(f"   ❌ ERREUR création document: {str(e)}")
