@@ -37,11 +37,50 @@ def trouver_dernier_log():
     return max(log_files, key=os.path.getmtime)
 
 
-def afficher_progression():
+def obtenir_date_modification_progression():
+    """Obtient la date de modification du fichier de progression."""
+    if not FICHIER_PROGRESSION.exists():
+        return None
+    return datetime.fromtimestamp(os.path.getmtime(FICHIER_PROGRESSION))
+
+
+def obtenir_derniere_facture_depuis_log():
+    """Extrait la dernière facture traitée depuis le log."""
+    dernier_log = trouver_dernier_log()
+    if not dernier_log:
+        return None
+    
+    try:
+        with open(dernier_log, 'r', encoding='utf-8', errors='ignore') as f:
+            lignes = f.readlines()
+            # Chercher la dernière ligne qui contient "Traitement facture"
+            for ligne in reversed(lignes):
+                if 'Traitement facture' in ligne or 'Facture' in ligne:
+                    # Essayer d'extraire le numéro ou l'ID
+                    import re
+                    # Chercher "Facture XXX" ou "ID: XXX"
+                    match = re.search(r'Facture\s+([A-Z0-9-]+)|ID:\s*(\d+)', ligne)
+                    if match:
+                        return match.group(1) or match.group(2)
+        return None
+    except:
+        return None
+
+
+def afficher_progression(ancienne_progression=None):
     """Affiche la progression actuelle."""
     progression = obtenir_progression()
     nb_factures = len(progression.get('factures_traitees', []))
     derniere_id = progression.get('derniere_facture_id', 0)
+    
+    # Vérifier si la progression a changé
+    progression_changée = False
+    if ancienne_progression:
+        ancien_nb = len(ancienne_progression.get('factures_traitees', []))
+        progression_changée = nb_factures != ancien_nb
+    
+    # Date de modification du fichier
+    date_modif = obtenir_date_modification_progression()
     
     # Nettoyer l'écran
     os.system('clear' if os.name != 'nt' else 'cls')
@@ -52,6 +91,28 @@ def afficher_progression():
     print()
     print(f"✅ Factures traitées     : {nb_factures}")
     print(f"📋 Dernière facture ID   : {derniere_id}")
+    
+    # Afficher la date de dernière modification
+    if date_modif:
+        maintenant = datetime.now()
+        delta = maintenant - date_modif
+        minutes_ecoulees = delta.total_seconds() / 60
+        
+        if minutes_ecoulees < 1:
+            statut = "🟢 TRÈS RÉCENT (< 1 min)"
+        elif minutes_ecoulees < 5:
+            statut = f"🟡 RÉCENT ({int(minutes_ecoulees)} min)"
+        elif minutes_ecoulees < 30:
+            statut = f"🟠 ANCIEN ({int(minutes_ecoulees)} min)"
+        else:
+            heures = minutes_ecoulees / 60
+            statut = f"🔴 TRÈS ANCIEN ({heures:.1f} h)"
+        
+        print(f"📅 Dernière mise à jour : {date_modif.strftime('%Y-%m-%d %H:%M:%S')} ({statut})")
+    
+    if progression_changée:
+        print("🔄 PROGRESSION DÉTECTÉE - Le script est actif !")
+    
     print()
     
     # Afficher quelques dernières factures traitées
@@ -64,20 +125,33 @@ def afficher_progression():
         print("-" * 80)
         print()
     
-    # Afficher le dernier log
+    # Afficher le dernier log avec plus d'infos
     dernier_log = trouver_dernier_log()
     if dernier_log:
-        print(f"📄 Dernier fichier log: {dernier_log.name}")
+        date_modif_log = datetime.fromtimestamp(os.path.getmtime(dernier_log))
+        maintenant = datetime.now()
+        delta_log = (maintenant - date_modif_log).total_seconds() / 60
         
-        # Afficher les 10 dernières lignes du log
+        print(f"📄 Dernier fichier log: {dernier_log.name}")
+        print(f"📅 Log modifié il y a: {delta_log:.1f} minutes")
+        
+        if delta_log > 10:
+            print("⚠️  ATTENTION: Le log n'a pas été modifié récemment - le script est peut-être bloqué")
+        elif delta_log < 5:
+            print("✅ Le script semble actif")
+        
+        print()
+        
+        # Afficher les 15 dernières lignes du log
         try:
             with open(dernier_log, 'r', encoding='utf-8', errors='ignore') as f:
                 lignes = f.readlines()
                 if lignes:
-                    print()
                     print("📋 Dernières lignes du log:")
                     print("-" * 80)
-                    for ligne in lignes[-10:]:
+                    # Afficher les 15 dernières lignes non vides
+                    lignes_non_vides = [l for l in lignes if l.strip()]
+                    for ligne in lignes_non_vides[-15:]:
                         print(ligne.rstrip())
                     print("-" * 80)
         except Exception as e:
@@ -86,13 +160,17 @@ def afficher_progression():
     print()
     print("💡 Actualisation automatique toutes les 5 secondes...")
     print("🛑 Appuyez sur Ctrl+C pour arrêter")
+    
+    return progression
 
 
 def suivre_progression_temps_reel():
     """Suit la progression en temps réel."""
+    ancienne_progression = obtenir_progression()
+    
     try:
         while True:
-            afficher_progression()
+            ancienne_progression = afficher_progression(ancienne_progression)
             time.sleep(5)  # Actualiser toutes les 5 secondes
     except KeyboardInterrupt:
         print("\n\n⚠️  Suivi interrompu par l'utilisateur")
