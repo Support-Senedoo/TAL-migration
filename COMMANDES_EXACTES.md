@@ -97,3 +97,17 @@ pgrep -f transferer_factures_documents_v2.py
 - **Si une ligne s'affiche** : Le script tourne ✅
 - **Si rien** : Le script s'est arrêté ❌
 
+## Vérifier que toutes les factures ont été traitées
+
+```bash
+cd ~/TAL-migration
+python3.10 verifier_toutes_factures.py
+```
+
+Ce script affiche :
+- ✅ Le nombre total de factures dans Odoo
+- ✅ Le nombre de factures traitées (dans la progression)
+- ✅ Le nombre de documents créés
+- ✅ Les factures restantes à traiter
+- ✅ Le pourcentage de progression
+
